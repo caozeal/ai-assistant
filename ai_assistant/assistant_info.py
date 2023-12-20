@@ -23,20 +23,22 @@ class AssistantInfo:
             'description': self.description
         }
 
-def dict_to_object(d) -> AssistantInfo:
+def dict_to_object(d) -> list[AssistantInfo]:
     return AssistantInfo(d['assistant_id'], d['thread_id'], d['run_id'], d['description'])
 
-def init_assistant_local():
-    with open('assistant_info.json', 'r') as f:
-        # 检查文件内容
-        if os.stat('assistant_info.json').st_size == 0:
-            assistant_info = None
-        else:
-            # 加载JSON数据
-            assistant_info: AssistantInfo = json.load(f, object_hook=dict_to_object)
-    return assistant_info
+
+def init_assistant_local() -> list[AssistantInfo]:
+    files = os.listdir('assistants')
+    assistants = []
+    for file in files:
+        with open('assistants/'+file, 'r') as f:
+            # 检查文件内容
+            if os.stat('assistants/'+file).st_size != 0:
+                # 加载JSON数据
+                assistants.append(json.load(f, object_hook=dict_to_object))
+    return assistants
 
 def save_assistant_local(assistant_info:AssistantInfo):
-    with open('assistant_info.json', 'w') as f:
+    with open(f'assistants/{assistant_info.assistant_id}.json', 'w') as f:
         json.dump(assistant_info.to_dict(), f)
     

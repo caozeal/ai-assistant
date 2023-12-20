@@ -13,7 +13,7 @@ import assistant_info as as_info
 client = OpenAI()
 
 def process_message(client:OpenAI, assistant_info:AssistantInfo, query):
-    message = client.beta.threads.messages.create(
+    client.beta.threads.messages.create(
         thread_id=assistant_info.thread_id,
         role="user",
         content=query
@@ -24,7 +24,7 @@ def process_message(client:OpenAI, assistant_info:AssistantInfo, query):
     )
     assistant_info.run_id = run.id
     as_info.save_assistant_local(assistant_info)
-    retrive_message(client, assistant_info.thread_id, run.id)
+    retrive_message(client, assistant_info)
 
     
 
@@ -37,6 +37,9 @@ def retrive_message(client:OpenAI, assistant_info:AssistantInfo):
             run_id=assistant_info.run_id
         )
         print(run.status)
+        if run.status == "expired":
+            process_message(client, assistant_info, "继续")
+            return
 
     thread_message = client.beta.threads.messages.list(
         thread_id=assistant_info.thread_id
@@ -53,21 +56,29 @@ def retrive_message(client:OpenAI, assistant_info:AssistantInfo):
 
     print(tabulate(table_data, headers=["Role", "Content"]))
 
-prompt = """你是一名网络小说作家，擅长中长篇网络小说的创作，在玄幻武侠领域深耕数十年"""
+assistant_infos: list[AssistantInfo] = as_info.init_assistant_local()
 
-assistant_info = as_info.init_assistant_local()
-
-if assistant_info == None:
+print("请选择助理：")
+table_data = []
+for i in range(len(assistant_infos)):
+    row = [i, assistant_infos[i].description]
+    table_data.append(row)
+table_data.append(["add", "新增助理"])
+print(tabulate(table_data, headers=["Index", "Description"]))
+index = input(">>> ")
+if index == "add":
     assistant: Assistant = client.beta.assistants.create(
         name="Personal Assistant",
-        description='你是一名网络小说作家，擅长中长篇网络小说的创作，在玄幻武侠领域深耕数十年',
-        model="gpt-4-1106-preview",
-        tools=[{"type": "code_interpreter"}]
+        description='你是一名新人视频up主，一切重新开始，你的目标是成为一名大神级的up主，你将实现这个目标。',
+        model="gpt-4-1106-preview"
+        # tools=[{"type": "code_interpreter"}]
     )
     thread = client.beta.threads.create()
     assistant_info: AssistantInfo = AssistantInfo(assistant.id, thread.id, None, assistant.description)
-    query = prompt
+    as_info.save_assistant_local(assistant_info)
+    query = assistant.description
 else:
+    assistant_info = assistant_infos[int(index)]
     retrive_message(client, assistant_info)
     query = input(">>> ")
 
